@@ -16,7 +16,7 @@ jobs:
           python-version: '3.9'
       - name: Install dependencies
         run: |
-          pip install google-api-python-client supabase
+          pip install google-api-python-client supabase requests beautifulsoup4
       - name: Run bot
         run: python main.py
         env:
