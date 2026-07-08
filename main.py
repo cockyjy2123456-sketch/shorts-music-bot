@@ -1,24 +1,10 @@
-name: YouTube Bot
-on:
-  schedule:
-    - cron: '0 9 * * *'
-  workflow_dispatch:
+import os
+from googleapiclient.discovery import build
+from supabase import create_client
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.9'
-      - name: Install dependencies
-        run: pip install google-api-python-client supabase
-      - name: Run bot
-        run: python main.py
-        env:
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+# 설정 불러오기
+youtube = build('youtube', 'v3', developerKey=os.environ.get('YOUTUBE_API_KEY'))
+supabase = create_client(os.environ.get('SUPABASE_URL'), os.environ.get('SUPABASE_KEY'))
+
+# 예시: 봇이 정상 작동하는지 확인하는 코드
+print("봇이 정상적으로 시작되었습니다!")
