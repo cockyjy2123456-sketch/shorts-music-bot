@@ -1,68 +1,49 @@
 import os
 import requests
-from bs4 import BeautifulSoup
-from supabase import create_client
 
-supabase_url = os.environ.get("SUPABASE_URL")
-supabase_key = os.environ.get("SUPABASE_KEY")
+# 🔐 깃허브 환경변수에서 안전하게 주소와 키를 가져옵니다.
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "").strip()
 
-if not supabase_url or not supabase_key:
-    print("❌ 에러: Supabase 환경변수가 세팅되지 않았습니다.")
-    exit(1)
+# 🎯 오류(PGRST125) 방지를 위해 정확한 REST API URL 주소를 조립합니다.
+# 주소 뒤에 /rest/v1/songs가 깔끔하게 붙어야 에러가 나지 않습니다.
+headers = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json",
+    "Prefer": "resolution=merge-duplicates"  # 중복 데이터는 덮어쓰기 설정
+}
 
-supabase = create_client(supabase_url, supabase_key)
-
-def get_trending_shorts_bgm():
+def run_bot():
     print("🚀 ShortsTrend.io 봇이 브라우저 이탈 방지용 쇼츠 피드 링크 수집을 시작합니다...")
-    target_url = "https://www.youtube.com/feed/trending?bp=4gINGAEyB01VU0lDREI%3D"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
     
-    try:
-        response = requests.get(target_url, headers=headers)
-        
-        # 🔥 [핵심 수술 부위]
-        # 브라우저에서 클릭해도 일반 영상으로 튕기지 않고, 무조건 '쇼츠 플레이어 화면'을 유지하는 주소 구조입니다.
-        # 유저들은 이 화면 우측 하단의 [음악 트랙 아이콘]을 눌러 바로 오디오 소스로 진입하게 됩니다.
-        extracted_songs = [
-            {
-                "title": "Night Dancer (Shorts Ver.)",
-                "artist": "imase",
-                "link": "https://www.youtube.com/shorts/JWSTEQNOCm0?feature=share",  # 👈 브라우저 우회 공유 링크
-                "tags": ["#Japan", "#Chill"]
-            },
-            {
-                "title": "Cupid (Sped Up)",
-                "artist": "FIFTY FIFTY",
-                "link": "https://www.youtube.com/shorts/Qc7_zRmbBss?feature=share",  # 👈 브라우저 우회 공유 링크
-                "tags": ["#Romance", "#Spring"]
-            }
-        ]
-        return extracted_songs
-        
-    except Exception as e:
-        print(f"❌ 크롤링 중 에러 발생: {e}")
-        return []
-
-def main():
-    songs = get_trending_shorts_bgm()
+    # 🎵 유튜브에서 수집해 온 가상의 데이터 샘플 (실제 크롤링 코드에 맞게 유지)
+    collected_songs = [
+        {
+            "id": "song_001",
+            "title": "Night Dancer (Shorts Ver.)",
+            "artist": "imase",
+            "link": "https://youtube.com/shorts/OW0Mv8S6HNM?feature=share",
+            "tags": ["#Japan", "#Chill"]
+        },
+        {
+            "id": "song_002",
+            "title": "Cupid (Sped Up)",
+            "artist": "FIFTY FIFTY",
+            "link": "https://youtube.com/shorts/Qc7_zRjmzVs?feature=share",
+            "tags": ["#Romance", "#SpeedUp"]
+        }
+    ]
     
-    if not songs:
-        print("❌ 수집된 BGM 데이터가 없습니다.")
-        return
-        
-    for song in songs:
-        try:
-            # 기존에 들어간 에러 유발 주소 데이터를 깔끔하게 청소(Delete)
-            supabase.table('songs').delete().eq('title', song['title']).execute()
-            
-            # 브라우저 전용으로 수술된 완벽한 쇼츠 피드 주소 삽입(Insert)
-            supabase.table('songs').insert(song).execute()
-            print(f"✅ 브라우저 최적화 쇼츠 주소 동기화 완료: {song['title']}")
-                
-        except Exception as e:
-            print(f"❌ Supabase 데이터 갱신 에러 ({song['title']}): {e}")
+    # ⚡ 수열님의 Supabase 테이블에 데이터 밀어넣기
+    api_url = f"{SUPABASE_URL}/rest/v1/songs"
+    
+    response = requests.post(api_url, headers=headers, json=collected_songs)
+    
+    if response.status_code in [200, 201]:
+        print("✅ Supabase 데이터 갱신 완료! 성공적으로 전광판에 저장되었습니다.")
+    else:
+        print(f"❌ Supabase 데이터 갱신 실패: {response.text}")
 
 if __name__ == "__main__":
-    main()
+    run_bot()
