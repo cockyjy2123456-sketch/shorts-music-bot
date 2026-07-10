@@ -1,15 +1,15 @@
 import os
 import sys
 import requests
+from googleapiclient.discovery import build
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
+# 환경 변수 설정
+YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip('/')
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "").strip()
 
-if ".supabase.co" in SUPABASE_URL:
-    SUPABASE_URL = SUPABASE_URL.split(".supabase.co")[0] + ".supabase.co"
-
-api_url = f"{SUPABASE_URL}/rest/v1/songs"
-
+# Supabase 연결 설정
+supabase_url = f"{SUPABASE_URL}/rest/v1/songs"
 headers = {
     "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
@@ -17,39 +17,53 @@ headers = {
     "Prefer": "resolution=merge-duplicates"
 }
 
-def run_bot():
-    print("🚀 ShortsTrend.io 봇이 데이터 타입을 교정하여 전송을 시도합니다...")
+def get_trending_shorts():
+    # 유튜브 API를 통해 'Shorts' 관련 인기 영상 검색
+    youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+    request = youtube.search().list(
+        part="snippet",
+        q="Shorts BGM trending",
+        type="video",
+        videoDuration="short",
+        maxResults=5,
+        order="viewCount"
+    )
+    response = request.execute()
     
-    # 💡 id 부분을 수열님의 테이블 타입(bigint)에 맞게 숫자로 전면 수정했습니다!
-    collected_songs = [
-        {
-            "id": 1,  # 👈 숫자로 변경
-            "title": "Night Dancer (Shorts Ver.)",
-            "artist": "imase",
-            "link": "https://youtube.com/shorts/OW0Mv8S6HNM?feature=share",
-            "tags": ["#Japan", "#Chill"]
-        },
-        {
-            "id": 2,  # 👈 숫자로 변경
-            "title": "Cupid (Sped Up)",
-            "artist": "FIFTY FIFTY",
-            "link": "https://youtube.com/shorts/Qc7_zRjmzVs?feature=share",
-            "tags": ["#Romance", "#SpeedUp"]
+    songs = []
+    for i, item in enumerate(response.get('items', [])):
+        song = {
+            "id": i + 1,
+            "title": item['snippet']['title'][:50],
+            "artist": item['snippet']['channelTitle'],
+            "link": f"https://www.youtube.com/shorts/{item['id']['videoId']}",
+            "tags": ["#Trending"]
         }
-    ]
-    
+        songs.append(song)
+    return songs
+
+def run_bot():
+    print("🚀 ShortsTrend.io 봇이 실시간 데이터를 수집합니다...")
     try:
-        response = requests.post(api_url, headers=headers, json=collected_songs)
+        new_data = get_trending_shorts()
+        
+        # 🔍 디버깅용 로그 추가
+        print(f"DEBUG: 봇이 찾아온 데이터 개수: {len(new_data)}")
+        print(f"DEBUG: 찾아온 데이터 내용: {new_data}")
+        
+        if not new_data:
+            print("⚠️ 경고: 유튜브에서 데이터를 하나도 못 찾아왔습니다.")
+            return
+
+        response = requests.post(supabase_url, headers=headers, json=new_data)
         
         if response.status_code in [200, 201]:
-            print("✅ Supabase 데이터 갱신 완료! 전광판에 정상 저장되었습니다.")
+            print("✅ Supabase 데이터 갱신 완료! 최신 곡들이 저장되었습니다.")
         else:
-            print(f"❌ Supabase 응답 에러 발생: {response.status_code} - {response.text}")
-            sys.exit(1)
+            print(f"❌ Supabase 에러: {response.status_code} - {response.text}")
             
     except Exception as e:
-        print(f"❌ 네트워크 통신 자체 실패: {str(e)}")
-        sys.exit(1)
+        print(f"❌ 실패: {str(e)}")
 
 if __name__ == "__main__":
     run_bot()
