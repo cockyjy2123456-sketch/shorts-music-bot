@@ -31,13 +31,13 @@ def get_trending_shorts():
     response = request.execute()
     
     songs = []
-    for i, item in enumerate(response.get('items', [])):
+    for item in response.get('items', []):
+        # id 값을 제거하여 Supabase가 자동으로 생성하게 함 (데이터 누적용)
         song = {
-            "id": i + 1,
             "title": item['snippet']['title'][:50],
             "artist": item['snippet']['channelTitle'],
             "link": f"https://www.youtube.com/shorts/{item['id']['videoId']}",
-            "tags": ["#Trending"]
+            "tags": "#Trending" 
         }
         songs.append(song)
     return songs
@@ -47,9 +47,7 @@ def run_bot():
     try:
         new_data = get_trending_shorts()
         
-        # 🔍 디버깅용 로그 추가
         print(f"DEBUG: 봇이 찾아온 데이터 개수: {len(new_data)}")
-        print(f"DEBUG: 찾아온 데이터 내용: {new_data}")
         
         if not new_data:
             print("⚠️ 경고: 유튜브에서 데이터를 하나도 못 찾아왔습니다.")
@@ -57,7 +55,7 @@ def run_bot():
 
         response = requests.post(supabase_url, headers=headers, json=new_data)
         
-        if response.status_code in [200, 201]:
+        if response.status_code in [200, 201, 204]:
             print("✅ Supabase 데이터 갱신 완료! 최신 곡들이 저장되었습니다.")
         else:
             print(f"❌ Supabase 에러: {response.status_code} - {response.text}")
