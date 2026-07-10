@@ -32,12 +32,12 @@ def get_trending_shorts():
     
     songs = []
     for item in response.get('items', []):
-        # id 값을 제거하여 Supabase가 자동으로 생성하게 함 (데이터 누적용)
+        # id는 Supabase에서 자동 생성하게 하고, tags는 배열 형식으로 전송
         song = {
             "title": item['snippet']['title'][:50],
             "artist": item['snippet']['channelTitle'],
             "link": f"https://www.youtube.com/shorts/{item['id']['videoId']}",
-            "tags": "#Trending" 
+            "tags": ["#Trending"]  # 👈 핵심 수정사항: 대괄호[]로 감싸서 배열로 만듦
         }
         songs.append(song)
     return songs
